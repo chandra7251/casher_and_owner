@@ -1,0 +1,11 @@
+import { chromium } from 'playwright';
+const browser = await chromium.launch({ headless: true });
+const page = await browser.newPage();
+await page.goto('http://127.0.0.1:8000/login');
+await page.getByLabel('Email').fill('owner@kedaisenja.test');
+await page.getByLabel('Password').fill('change-this-local-password');
+await page.getByRole('button', { name: 'Masuk' }).click();
+console.log('after login', page.url(), (await page.locator('body').innerText()).slice(0, 500));
+const response = await page.goto('http://127.0.0.1:8000/owner/menu');
+console.log('owner', response.status(), page.url(), (await page.locator('body').innerText()).slice(0, 500));
+await browser.close();
