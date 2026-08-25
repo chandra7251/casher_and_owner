@@ -27,3 +27,7 @@ Homestead.yaml
 Thumbs.db
 tools/composer.phar
 tools/composer-setup.php
+/.agents
+/.claude
+/agent
+skills-lock.json

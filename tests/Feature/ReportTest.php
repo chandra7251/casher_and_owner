@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
-use App\Models\CafeSetting;
+use App\Models\AuditLog;
+use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Table;
 use App\Models\User;
-use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -15,13 +15,18 @@ class ReportTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function owner(): User { return User::factory()->create(['role' => 'owner']); }
+    private function owner(): User
+    {
+        return User::factory()->create(['role' => 'owner']);
+    }
+
     private function paidOrder(string $paidAt, int $total = 30000): Order
     {
         $table = Table::factory()->create();
         $cashier = User::factory()->create(['role' => 'cashier']);
         $order = Order::create(['number' => uniqid('ORD-'), 'user_id' => $cashier->id, 'table_id' => $table->id, 'status' => 'paid', 'total' => $total]);
         Payment::create(['order_id' => $order->id, 'method' => 'cash', 'amount' => $total, 'received_amount' => $total, 'change_amount' => 0, 'idempotency_key' => uniqid(), 'paid_at' => $paidAt]);
+
         return $order;
     }
 
@@ -52,6 +57,35 @@ class ReportTest extends TestCase
         $this->assertStringContainsString('18000', $response->content());
     }
 
+    public function test_csv_export_contains_cashier_and_item_details(): void
+    {
+        $owner = $this->owner();
+        $table = Table::factory()->create(['name' => 'Meja Detail']);
+        $cashier = User::factory()->create(['role' => 'cashier', 'name' => 'Sari Kasir']);
+        $item = MenuItem::factory()->create(['name' => 'Kopi Detail']);
+        $order = Order::create(['number' => 'DET-001', 'user_id' => $cashier->id, 'table_id' => $table->id, 'status' => 'paid', 'total' => 36000]);
+        $order->items()->create(['menu_item_id' => $item->id, 'name_snapshot' => 'Kopi Detail', 'size' => 'Large', 'unit_price' => 18000, 'quantity' => 2, 'line_total' => 36000]);
+        Payment::create(['order_id' => $order->id, 'method' => 'cash', 'amount' => 36000, 'received_amount' => 36000, 'change_amount' => 0, 'idempotency_key' => 'detail-001', 'paid_at' => '2026-07-10 11:00:00']);
+
+        $response = $this->actingAs($owner)->get('/owner/reports/csv?from=2026-07-01&to=2026-07-31');
+
+        $response->assertOk();
+        $this->assertStringContainsString('Sari Kasir', $response->content());
+        $this->assertStringContainsString('Kopi Detail', $response->content());
+        $this->assertStringContainsString('Large', $response->content());
+        $this->assertStringContainsString('2', $response->content());
+    }
+
+    public function test_report_exports_create_audit_logs(): void
+    {
+        $owner = $this->owner();
+        $this->paidOrder('2026-08-01 10:00:00', 18000);
+        $this->actingAs($owner)->get('/owner/reports/csv?from=2026-08-01&to=2026-08-31')->assertOk();
+        $this->actingAs($owner)->get('/owner/reports/pdf?from=2026-08-01&to=2026-08-31')->assertOk();
+        $this->assertDatabaseHas('audit_logs', ['user_id' => $owner->id, 'action' => 'report_exported', 'auditable_type' => 'report', 'auditable_id' => 0]);
+        $this->assertSame(2, AuditLog::query()->where('user_id', $owner->id)->where('action', 'report_exported')->count());
+    }
+
     public function test_cashier_cannot_access_reports(): void
     {
         $cashier = User::factory()->create(['role' => 'cashier']);
@@ -69,5 +103,14 @@ class ReportTest extends TestCase
         $response = $this->actingAs($owner)->getJson('/owner/reports?from=2026-07-01&to=2026-07-31&status=expired');
 
         $response->assertOk()->assertJsonPath('meta.total_orders', 1);
+    }
+
+    public function test_owner_can_download_pdf_report(): void
+    {
+        $owner = $this->owner();
+        $this->paidOrder('2026-08-01 10:00:00', 18000);
+        $response = $this->actingAs($owner)->get('/owner/reports/pdf?from=2026-08-01&to=2026-08-31');
+        $response->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF', $response->getContent());
     }
 }

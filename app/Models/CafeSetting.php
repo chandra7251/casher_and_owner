@@ -6,5 +6,5 @@ use Illuminate\Database\Eloquent\Model;
 
 class CafeSetting extends Model
 {
-    protected $fillable = ['name', 'address', 'phone', 'logo_path', 'thank_you_message'];
+    protected $fillable = ['name', 'currency', 'address', 'phone', 'logo_path', 'thank_you_message'];
 }

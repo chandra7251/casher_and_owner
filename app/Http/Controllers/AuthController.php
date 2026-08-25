@@ -11,14 +11,20 @@ use Inertia\Response;
 
 class AuthController extends Controller
 {
-    public function create(): Response { return Inertia::render('Auth/Login'); }
+    public function create(): Response
+    {
+        return Inertia::render('Auth/Login');
+    }
 
     public function store(Request $request): RedirectResponse
     {
         $credentials = $request->validate(['email' => ['required', 'email'], 'password' => ['required', 'string']]);
-        if (!Auth::attempt($credentials, false)) throw ValidationException::withMessages(['email' => 'Email atau password salah.']);
+        if (! Auth::attempt($credentials, false)) {
+            throw ValidationException::withMessages(['email' => 'Email atau password salah.']);
+        }
         $request->session()->regenerate();
-        return redirect()->intended($request->user()->role->value === 'owner' ? '/owner/menu' : '/cashier/orders');
+
+        return redirect()->to($request->user()->role->value === 'owner' ? '/owner/menu' : '/cashier/orders');
     }
 
     public function destroy(Request $request): RedirectResponse
@@ -26,6 +32,7 @@ class AuthController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
         return redirect('/login');
     }
 }

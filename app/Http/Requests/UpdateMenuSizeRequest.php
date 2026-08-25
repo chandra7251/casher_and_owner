@@ -6,7 +6,10 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateMenuSizeRequest extends FormRequest
 {
-    public function authorize(): bool { return $this->user()?->role?->value === 'owner'; }
+    public function authorize(): bool
+    {
+        return $this->user()?->role?->value === 'owner';
+    }
 
     public function rules(): array
     {
