@@ -6,16 +6,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
-
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: cafe_pos_test
-        ports:
-          - 3306:3306
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
@@ -28,13 +19,11 @@ jobs:
           extensions: mbstring, pdo_mysql, gd, curl, zip
           coverage: none
 
-      - name: Wait for MySQL
+      - name: Setup MySQL
         run: |
-          for i in {1..30}; do
-            php -r "new PDO('mysql:host=127.0.0.1;port=3306', 'root', 'root');" && exit 0
-            sleep 2
-          done
-          exit 1
+          sudo systemctl start mysql.service
+          sudo mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'root'; FLUSH PRIVILEGES; CREATE DATABASE IF NOT EXISTS cafe_pos_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+          mysqladmin ping -h127.0.0.1 -uroot -proot --silent
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
