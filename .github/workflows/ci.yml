@@ -12,12 +12,12 @@ jobs:
       mysql:
         image: mysql:8.0
         env:
-          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_ROOT_PASSWORD: root
           MYSQL_DATABASE: cafe_pos_test
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping --silent"
+          --health-cmd="mysqladmin ping -h127.0.0.1 -uroot -proot --silent"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
@@ -60,7 +60,7 @@ jobs:
           DB_PORT: 3306
           DB_DATABASE: cafe_pos_test
           DB_USERNAME: root
-          DB_PASSWORD: ''
+          DB_PASSWORD: root
           PRINT_BRIDGE_TOKEN: ci-print-bridge-token
 
       - name: Run backend tests
@@ -71,7 +71,7 @@ jobs:
           DB_PORT: 3306
           DB_DATABASE: cafe_pos_test
           DB_USERNAME: root
-          DB_PASSWORD: ''
+          DB_PASSWORD: root
           PRINT_BRIDGE_TOKEN: ci-print-bridge-token
 
       - name: Build frontend assets
@@ -86,5 +86,5 @@ jobs:
           DB_PORT: 3306
           DB_DATABASE: cafe_pos_test
           DB_USERNAME: root
-          DB_PASSWORD: ''
+          DB_PASSWORD: root
           PRINT_BRIDGE_TOKEN: ci-print-bridge-token
