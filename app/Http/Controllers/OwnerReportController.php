@@ -15,11 +15,16 @@ class OwnerReportController extends Controller
 {
     public function index(Request $request): \Inertia\Response|JsonResponse
     {
-        $request->validate(['from' => ['required', 'date'], 'to' => ['required', 'date'], 'status' => ['nullable', 'in:paid,expired']]);
+        $request->validate([
+            'from' => ['required', 'date'],
+            'to' => ['required', 'date'],
+            'status' => ['nullable', 'in:paid,expired'],
+        ]);
 
         $status = $request->input('status', 'paid');
         $from = Carbon::parse($request->input('from'))->startOfDay();
         $to = Carbon::parse($request->input('to'))->endOfDay();
+        $page = max(1, (int) $request->input('page', 1));
 
         $query = Order::query()
             ->with(['payment', 'table:id,name', 'user:id,name', 'items:order_id,name_snapshot,size,unit_price,quantity,line_total'])
@@ -33,9 +38,21 @@ class OwnerReportController extends Controller
 
         $totalOrders = (clone $query)->count();
         $summary = (clone $query)->leftJoin('payments', 'payments.order_id', '=', 'orders.id')->selectRaw("COALESCE(SUM(orders.total), 0) as revenue, COALESCE(SUM(CASE WHEN payments.method = 'cash' THEN orders.total ELSE 0 END), 0) as cash_total, COALESCE(SUM(CASE WHEN payments.method = 'qris_manual' THEN orders.total ELSE 0 END), 0) as qris_total")->first();
-        $orders = $query->orderByDesc('id')->forPage(max(1, (int) $request->input('page', 1)), 50)->get();
+        $lastPage = max(1, (int) ceil($totalOrders / 50));
+        $orders = $query->orderByDesc('id')->forPage($page, 50)->get();
 
-        $meta = ['total_orders' => $totalOrders, 'total_revenue' => (int) $summary->revenue, 'cash_total' => (int) $summary->cash_total, 'qris_total' => (int) $summary->qris_total, 'current_page' => max(1, (int) $request->input('page', 1)), 'per_page' => 50, 'last_page' => max(1, (int) ceil($totalOrders / 50)), 'from' => $from->toDateString(), 'to' => $to->toDateString(), 'status' => $status];
+        $meta = [
+            'total_orders' => $totalOrders,
+            'total_revenue' => (int) $summary->revenue,
+            'cash_total' => (int) $summary->cash_total,
+            'qris_total' => (int) $summary->qris_total,
+            'current_page' => $page,
+            'per_page' => 50,
+            'last_page' => $lastPage,
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'status' => $status,
+        ];
 
         if ($request->expectsJson()) {
             return response()->json(['data' => $orders, 'meta' => $meta]);

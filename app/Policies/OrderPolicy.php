@@ -14,6 +14,11 @@ class OrderPolicy
 
     public function update(User $user, Order $order): bool
     {
-        return $this->pay($user, $order) && $order->status === 'awaiting_payment';
+        return $this->pay($user, $order);
+    }
+
+    public function viewReceipt(User $user, Order $order): bool
+    {
+        return in_array($user->role?->value, ['owner', 'cashier'], true);
     }
 }

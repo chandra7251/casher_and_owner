@@ -52,6 +52,7 @@ Route::middleware(['auth', 'role:owner'])->post('/owner/menu/items/{menuItem}/ph
 Route::middleware(['auth', 'role:owner'])->patch('/owner/menu/items/{menuItem}/availability', [OwnerMenuController::class, 'updateAvailability'])->middleware('throttle:mutations');
 
 Route::get('/health', fn () => response()->json(['ok' => true]));
+Route::get('/api/health', fn () => response()->json(['ok' => true]));
 
 Route::middleware(['throttle:print-bridge', 'print-bridge-auth'])->group(function () {
     Route::get('/api/print-jobs/next', [PrintJobController::class, 'next']);

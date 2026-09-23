@@ -80,3 +80,32 @@ test('cashier cannot open menu management', async ({ page }) => {
   const response = await page.goto('/owner/menu');
   expect(response.status()).toBe(403);
 });
+
+test('owner reports page shows pagination controls', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('Email').fill('owner@kedaisenja.test');
+  await page.getByLabel('Password').fill('change-this-local-password');
+  await page.getByRole('button', { name: 'Masuk' }).click();
+  await page.waitForURL('**/owner/menu');
+  await page.goto('/owner/reports?from=2026-01-01&to=2026-12-31');
+  await expect(page.getByRole('heading', { name: 'Laporan transaksi' })).toBeVisible();
+  // Pagination controls must always be rendered
+  await expect(page.getByRole('button', { name: 'Sebelumnya' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Berikutnya' })).toBeVisible();
+  // On page 1 with zero or one page of results, Sebelumnya is disabled
+  await expect(page.getByRole('button', { name: 'Sebelumnya' })).toBeDisabled();
+});
+
+test('owner reports pagination preserves filters on load', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('Email').fill('owner@kedaisenja.test');
+  await page.getByLabel('Password').fill('change-this-local-password');
+  await page.getByRole('button', { name: 'Masuk' }).click();
+  await page.waitForURL('**/owner/menu');
+  await page.goto('/owner/reports?from=2026-01-01&to=2026-12-31');
+  await expect(page.getByRole('heading', { name: 'Laporan transaksi' })).toBeVisible();
+  await page.getByRole('button', { name: 'Tampilkan' }).click();
+  // After Tampilkan, filter controls still show correct values
+  await expect(page.getByLabel('Dari')).toHaveValue('2026-01-01');
+  await expect(page.getByLabel('Sampai')).toHaveValue('2026-12-31');
+});

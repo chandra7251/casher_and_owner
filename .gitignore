@@ -31,3 +31,5 @@ tools/composer-setup.php
 /.claude
 /agent
 skills-lock.json
+/playwright-report
+/test-results

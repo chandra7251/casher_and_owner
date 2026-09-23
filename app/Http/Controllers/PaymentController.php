@@ -22,7 +22,7 @@ class PaymentController extends Controller
 {
     public function receipt(Request $request, Order $order): Response
     {
-        abort_unless($request->user()->role?->value === 'owner' || $order->user_id === $request->user()->id, 403);
+        $this->authorize('viewReceipt', $order);
         abort_unless($order->status === 'paid', 422, 'Struk hanya tersedia untuk order paid.');
         $order->load(['items', 'table', 'payment', 'user']);
         $cafe = CafeSetting::query()->first() ?? new CafeSetting(['name' => 'Cafe', 'thank_you_message' => 'Terima kasih.']);

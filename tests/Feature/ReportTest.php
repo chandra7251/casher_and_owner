@@ -113,4 +113,70 @@ class ReportTest extends TestCase
         $response->assertOk()->assertHeader('Content-Type', 'application/pdf');
         $this->assertStringStartsWith('%PDF', $response->getContent());
     }
+
+    public function test_report_pagination_metadata_returned_correctly(): void
+    {
+        $owner = $this->owner();
+        $this->paidOrder('2026-07-15 10:00:00', 10000);
+
+        $response = $this->actingAs($owner)->getJson('/owner/reports?from=2026-07-01&to=2026-07-31&page=1');
+
+        $response->assertOk()
+            ->assertJsonPath('meta.current_page', 1)
+            ->assertJsonPath('meta.per_page', 50)
+            ->assertJsonPath('meta.last_page', 1)
+            ->assertJsonPath('meta.total_orders', 1);
+    }
+
+    public function test_report_page_2_returns_empty_when_only_one_page(): void
+    {
+        $owner = $this->owner();
+        $this->paidOrder('2026-07-15 10:00:00', 10000);
+
+        $response = $this->actingAs($owner)->getJson('/owner/reports?from=2026-07-01&to=2026-07-31&page=2');
+
+        $response->assertOk()
+            ->assertJsonPath('meta.current_page', 2)
+            ->assertJsonPath('meta.total_orders', 1)
+            ->assertJsonPath('meta.last_page', 1)
+            ->assertJsonCount(0, 'data');
+    }
+
+    public function test_report_aggregation_includes_all_pages_not_just_current(): void
+    {
+        $owner = $this->owner();
+        for ($i = 1; $i <= 3; $i++) {
+            $this->paidOrder('2026-07-0'.$i.' 10:00:00', 20000);
+        }
+
+        $response = $this->actingAs($owner)->getJson('/owner/reports?from=2026-07-01&to=2026-07-31&page=1');
+
+        $response->assertOk()
+            ->assertJsonPath('meta.total_orders', 3)
+            ->assertJsonPath('meta.total_revenue', 60000);
+    }
+
+    public function test_report_invalid_page_below_one_clamped_to_page_1(): void
+    {
+        $owner = $this->owner();
+        $this->paidOrder('2026-07-15 10:00:00', 10000);
+
+        $response = $this->actingAs($owner)->getJson('/owner/reports?from=2026-07-01&to=2026-07-31&page=0');
+
+        $response->assertOk()
+            ->assertJsonPath('meta.current_page', 1);
+    }
+
+    public function test_report_zero_results_returns_first_page_metadata(): void
+    {
+        $owner = $this->owner();
+
+        $response = $this->actingAs($owner)->getJson('/owner/reports?from=2020-01-01&to=2020-01-31');
+
+        $response->assertOk()
+            ->assertJsonPath('meta.total_orders', 0)
+            ->assertJsonPath('meta.current_page', 1)
+            ->assertJsonPath('meta.last_page', 1)
+            ->assertJsonCount(0, 'data');
+    }
 }
